@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 # ─── Page Config ───
 st.set_page_config(page_title="CRM Auto-Fill", page_icon="🤖", layout="wide")
 
-# ─── Custom CSS for better UI ───
+# ─── Custom CSS ───
 st.markdown("""
 <style>
     .main-header {
@@ -25,16 +25,6 @@ st.markdown("""
         padding: 1rem;
         border-radius: 8px;
         margin: 0.5rem 0;
-    }
-    .success-box {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-    }
-    .error-box {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
     }
     .info-box {
         background-color: #d1ecf1;
@@ -66,10 +56,10 @@ with st.sidebar:
         value="https://indiacrm.solenis.com/ebizwiz/Sales/nonwarrantyitem.aspx"
     )
     
-    st.subheader("🦊 Firefox Profile")
-    firefox_profile = st.text_input(
+    st.subheader("🟡 Chrome Profile")
+    chrome_profile = st.text_input(
         "Profile Path",
-        value=r"C:\Users\sufiys\AppData\Roaming\Mozilla\Firefox\Profiles\3wjnlvvx.default-esr"
+        value=r"C:\Users\sufiys\AppData\Local\Google\Chrome\User Data"
     )
     
     st.subheader("⏱️ Timing")
@@ -82,7 +72,7 @@ with st.sidebar:
 # ─── Main Content ───
 tab1, tab2, tab3 = st.tabs(["📁 Upload & Map", "▶️ Run Automation", "📝 Log"])
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # TAB 1: Upload & Map
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab1:
@@ -100,30 +90,23 @@ with tab1:
         
         st.success(f"✅ Loaded {len(df)} rows and {len(df.columns)} columns")
         
-        # Data Preview
         st.subheader("👀 Data Preview")
         st.dataframe(df.head(10), use_container_width=True)
         
-        # Column Mapping
         st.subheader("🔧 Step 2: Map Columns to CRM Fields")
         
         st.markdown("""
         <div class="status-box info-box">
             Map your Excel columns to the CRM form fields below.
-            Select "-- Skip --" to ignore a field.
         </div>
         """, unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
-        
         columns_list = ["-- Skip --"] + list(df.columns)
         
         with col1:
             st.markdown("**CRM Form Fields**")
             party_name_col = st.selectbox("Party Name (#vpartyname)", columns_list, index=0)
-            # Add more fields here as you discover them:
-            # field2_col = st.selectbox("Field 2 Name", columns_list, index=0)
-            # field3_col = st.selectbox("Field 3 Name", columns_list, index=0)
         
         with col2:
             st.markdown("**Mapping Summary**")
@@ -155,7 +138,6 @@ with tab2:
         df = st.session_state.df
         mapping = st.session_state.mapping
         
-        # Summary before running
         st.markdown(f"""
         | Setting | Value |
         |---------|-------|
@@ -183,15 +165,15 @@ with tab2:
             
             progress_bar = st.progress(0)
             status_text = st.empty()
-            log_container = st.container()
             
             try:
                 with sync_playwright() as p:
-                    status_text.info("🚀 Launching Firefox with your profile...")
+                    status_text.info("🚀 Launching Chrome with your profile...")
                     
-                    browser = p.firefox.launch_persistent_context(
-                        user_data_dir=firefox_profile,
-                        headless=headless_mode
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=chrome_profile,
+                        headless=headless_mode,
+                        channel="chrome"
                     )
                     
                     page = browser.pages[0] if browser.pages else browser.new_page()
@@ -204,32 +186,25 @@ with tab2:
                         status_text.info(f"🔄 Processing row {row_num} of {len(df)}...")
                         
                         try:
-                            # Navigate to CRM page
                             page.goto(target_url, wait_until="networkidle")
                             time.sleep(1)
                             
-                            # Fill Party Name
                             if "party_name" in mapping:
                                 value = str(row[mapping["party_name"]])
                                 page.fill("#vpartyname", value)
                                 page.keyboard.press("Tab")
                                 time.sleep(wait_after_tab)
                                 
-                                # Click the link
                                 page.click("xpath=/html/body/form/table/tbody/tr[3]/td/table/tbody/tr[2]/td[1]/a")
                                 time.sleep(2)
                             
-                            # Log success
                             st.session_state.log.append({"row": row_num, "status": "✅ Success", "detail": f"Party: {value}"})
                             
                         except Exception as e:
                             st.session_state.log.append({"row": row_num, "status": "❌ Failed", "detail": str(e)})
                         
-                        # Update progress
                         st.session_state.completed = row_num
                         progress_bar.progress(row_num / len(df))
-                        
-                        # Delay between rows
                         time.sleep(delay_between_rows)
                     
                     browser.close()
@@ -250,7 +225,6 @@ with tab3:
     if st.session_state.log:
         log_df = pd.DataFrame(st.session_state.log)
         
-        # Summary metrics
         col1, col2, col3 = st.columns(3)
         total = len(log_df)
         success = len(log_df[log_df["status"].str.contains("Success")])
@@ -260,12 +234,9 @@ with tab3:
         col2.metric("✅ Success", success)
         col3.metric("❌ Failed", failed)
         
-        # Full log table
         st.dataframe(log_df, use_container_width=True)
         
-        # Download log
         csv = log_df.to_csv(index=False)
         st.download_button("📥 Download Log (CSV)", csv, "automation_log.csv", "text/csv")
     else:
         st.info("No log entries yet. Run the automation first.")
-
