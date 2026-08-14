@@ -27,13 +27,12 @@ if uploaded_file:
     # 4. Start Automation
     if st.button("🚀 Start Automation"):
 
-        # Setup Firefox
+        # Setup Firefox with YOUR profile
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument("--headless")
-        # Use your existing Firefox profile (already logged in)
         options.add_argument("-profile")
-        options.add_argument("C:\Users\sufiys\AppData\Roaming\Mozilla\Firefox\Profiles\3wjnlvvx.default-esr")
+        options.add_argument("C:\\Users\\sufiys\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\3wjnlvvx.default-esr")
 
         driver = webdriver.Firefox(options=options)
 
