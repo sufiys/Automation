@@ -26,19 +26,20 @@ if uploaded_file:
 
     # 4. Start Automation
     if st.button("🚀 Start Automation"):
-        
-        # Setup browser
-        options = webdriver.ChromeOptions()
+
+        # Setup Firefox
+        options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument("--headless")
-        # Keep browser open if already logged in
-        options.add_argument("--user-data-dir=C:\\SeleniumProfile")
+        # Use your existing Firefox profile (already logged in)
+        options.add_argument("-profile")
+        options.add_argument("C:\Users\sufiys\AppData\Roaming\Mozilla\Firefox\Profiles\3wjnlvvx.default-esr")
 
-        driver = webdriver.Chrome(options=options)
-        
+        driver = webdriver.Firefox(options=options)
+
         # Navigate to the page
         driver.get("https://indiacrm.solenis.com/ebizwiz/Sales/nonwarrantyitem.aspx")
-        time.sleep(3)  # Wait for page to load
+        time.sleep(3)
 
         # Progress tracking
         progress_bar = st.progress(0)
@@ -66,7 +67,7 @@ if uploaded_file:
 
                 # Step 3: Click the link
                 link = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, 
+                    EC.element_to_be_clickable((By.XPATH,
                         "/html/body/form/table/tbody/tr[3]/td/table/tbody/tr[2]/td[1]/a"))
                 )
                 link.click()
